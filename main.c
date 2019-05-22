@@ -40,11 +40,9 @@ void init_shell() {
 
         //activates signal handler and ignores
         signal(SIGINT,sig_handler);
-        signal(SIGQUIT, SIG_IGN);
-        signal(SIGTSTP, SIG_IGN);
+        signal(SIGTSTP, sig_handler);
         signal(SIGTTIN, SIG_IGN);
         signal(SIGTTOU, SIG_IGN);
-        //signal(SIGCHLD, SIG_IGN); //causes apt-get to break?
         
         shell_pgid = getpid();
         setpgid(shell_pgid,shell_pgid); //make terminal its own process group
@@ -169,7 +167,6 @@ int run_process(process *p,int in,int out){
     pid_t pid;
     pid=fork();
     if (pid==0){
-        signal(SIGTSTP,sig_handler);
         if (in!=0){
             dup2(in,0);
             close(in);

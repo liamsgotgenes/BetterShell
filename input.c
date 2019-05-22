@@ -1,6 +1,5 @@
 #include "shell.h"
 
-
 char *current_dir[]={ ".", NULL };
 char *binaries[]={ "/bin/", "/usr/bin/", "/usr/local/bin/", NULL };
 char *binaries_cwd[]={ "/bin/", "/usr/bin/", "/usr/local/bin/", ".", NULL };
@@ -278,9 +277,6 @@ int input_buffer(char *buffer,size_t size){
                 printf("%s",buffer);
                 reposition_cursor(i,strlen(buffer));
             }
-            else if (c==27){ //esc; segfaults without this
-                i--;
-            }
             else if (c=='\033'){ //arrow keys; each arrow key spits out a value \033[_
                 getchar(); //skips the [
                 c=getchar();
@@ -310,6 +306,8 @@ int input_buffer(char *buffer,size_t size){
                         }
                         i--;
                         break;
+                    default: //escape
+                        i--;
                 }
             }
             else{
