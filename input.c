@@ -1,20 +1,9 @@
-#include <termios.h>
-#include <sys/ioctl.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <dirent.h>
-#include <pwd.h>
+#include "shell.h"
 
-struct passwd *pw; //current pw
+
 char *current_dir[]={ ".", NULL };
 char *binaries[]={ "/bin/", "/usr/bin/", "/usr/local/bin/", NULL };
 char *binaries_cwd[]={ "/bin/", "/usr/bin/", "/usr/local/bin/", ".", NULL };
-void super_tab2(char *buffer, char **dirs, int all);
 
 /* Detects a key press from the keyboard
    without the need for enter to be pressed */
@@ -43,36 +32,10 @@ int in_array(char **buffer,char *string,int size){
     return 1;
 }
 
-int get_cursor_pos(int *cx, unsigned short *tx) {
-    char buf[30]={0};
-    int ret, i, pow;
-    char ch;
-    *cx = 0;
-    struct termios term, restore;
-    tcgetattr(0, &term);
-    tcgetattr(0, &restore);
-    term.c_lflag &= ~(ICANON|ECHO);
-    tcsetattr(0, TCSANOW, &term);
-    write(1, "\033[6n", 4);
-    for( i = 0, ch = 0; ch != 'R'; i++ )
-    {
-        ret = read(0, &ch, 1);
-        if ( !ret ) {
-            fprintf(stderr, "getpos: error reading response!\n");
-            return 1;
-        }
-    buf[i] = ch;
-    }
-    for( i -= 2, pow = 1; buf[i] != ';'; i--, pow *= 10)
-        *cx = *cx + ( buf[i] - '0' ) * pow;
-    tcsetattr(0, TCSANOW, &restore);
-
-
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    *tx=w.ws_col;
-    return 0;  // make sure your main returns int
-}
+//get terminal size
+//    struct winsize w;
+//    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+//    *tx=w.ws_col;
 
 //allows completion when nested in directories
 int is_dir(char *buffer){
@@ -314,6 +277,9 @@ int input_buffer(char *buffer,size_t size){
                 print_prompt();
                 printf("%s",buffer);
                 reposition_cursor(i,strlen(buffer));
+            }
+            else if (c==27){ //esc; segfaults without this
+                i--;
             }
             else if (c=='\033'){ //arrow keys; each arrow key spits out a value \033[_
                 getchar(); //skips the [

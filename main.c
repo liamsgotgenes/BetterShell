@@ -1,59 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <termios.h>
-#include <signal.h>
-#include <pwd.h>
-#include <fcntl.h>
-#include "input.c"
-#define MAX_LINE 80
+#include "shell.h"
 
-typedef struct process {
-    struct process *next;
-    char **argv;
-    pid_t pid;
-} process;
-
-typedef struct job {
-    struct job *next;
-    char *command;
-    process *first_process;
-    pid_t pgid;
-    struct termios tmodes;
-    int stdin,stdout,stderr;
-    int bg;
-    char *file;
-    int file_fd;
-} job;
-
-struct user {
-    char *name;
-    int uid;
-    struct user *next;
-};
-
-void init_shell();
-job *copy_job(job *j);
-void push(job* j);
-void print_all();
-void pop();
-int is_alive();
-void move_to_bg(job *j);
-int move_to_fg(job *j);
-int wait_for_job(job *j);
-
-pid_t shell_pgid;
-int shell_is_interactive;
-int shell_terminal;
-struct termios shell_tmodes, shell_tmodes_OLD;
 job *head=NULL;
-struct user *first_user;
-struct user *current_user;
-char last_dir[128];
 
 //not certain if these are working as intended, job control seems to wirking fine however
 void sig_handler(int sig){
@@ -83,9 +30,6 @@ void sig_handler(int sig){
     }
 }
 
-static void exit_func(void){
-    tcsetattr(shell_terminal,TCSANOW,&shell_tmodes_OLD);
-}
 
 void init_shell() {
     shell_terminal = STDIN_FILENO;
@@ -251,6 +195,7 @@ void move_to_bg(job *j){
 
 int move_to_fg(job *j){
     tcsetpgrp(shell_terminal,j->pgid);
+    tcsetattr(shell_terminal,TCSANOW,&shell_tmodes_OLD);
     j->bg=0;
     int status=wait_for_job(j);
     return status;

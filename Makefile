@@ -1,5 +1,5 @@
 ALL:
-	gcc -g main.c -o shell
+	gcc -g main.c input.c -o shell
 clean:
 	rm shell*
 	sudo rm /usr/bin/shell
