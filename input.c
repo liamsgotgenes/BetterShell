@@ -146,13 +146,12 @@ void super_tab2(char *buffer, char **dirs, int all){
         strcpy(buffer,result[0]);
         return;
     }
-    printf("\n");
 
     int match_attempt=strlen(buffer); //does partial completion on buffer
     int changed=0;
     int match=1;
     int j;
-    while (1){
+    while (1 && size!=0){
         for (j=1;j<size;j++){
             if (result[j-1][match_attempt] != result[j][match_attempt]){
                 match=0;
@@ -161,9 +160,14 @@ void super_tab2(char *buffer, char **dirs, int all){
         }
         if (!match) break;
         match_attempt++;
+        changed=1;
     }
-    strncpy(buffer,result[0],match_attempt);
+    if (changed){ //avoids printing new lines and all options on a partial completion
+        strncpy(buffer,result[0],match_attempt);
+        return;
+    }
 
+    printf("\n");
     for (j=0;j<size;j++){
         printf("%s  ",result[j]);
         free(result[j]);
