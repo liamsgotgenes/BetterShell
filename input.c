@@ -31,10 +31,6 @@ int in_array(char **buffer,char *string,int size){
     return 1;
 }
 
-//get terminal size
-//    struct winsize w;
-//    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-//    *tx=w.ws_col;
 
 //allows completion when nested in directories
 int is_dir(char *buffer){
@@ -54,6 +50,7 @@ int is_dir(char *buffer){
     return 0;
 }
 
+/* figures out which directories and section of the input buffer to use for the tab completion */
 void super_tab1(char *buffer){
     int last_index=strlen(buffer)-1;
     int target=last_index;
@@ -73,7 +70,8 @@ void super_tab1(char *buffer){
     else{ //is pressing tab on last word of multi word command
         target+=2;
         if (buffer[strlen(buffer)-1]==' '){ //ends on a space -> print cwd
-            super_tab2(buffer,current_dir,1);
+            char *sub_buffer=buffer+strlen(buffer); //making sure it only hands super_tab2 what it needs; if handed full buffer, tab completion overwrites previous word
+            super_tab2(sub_buffer,current_dir,1);
             return;
         }
         char *sub_buffer=buffer+target;
@@ -81,7 +79,6 @@ void super_tab1(char *buffer){
             super_tab2(sub_buffer,current_dir,0);
         return;
     }
-
 }
 
 
@@ -144,12 +141,28 @@ void super_tab2(char *buffer, char **dirs, int all){
     }
 
     qsort( result, size, sizeof(char*), compare_stings); //sort array
-    int j;
-    if (size==1){
+
+    if (size==1){ //autofills if only one match
         strcpy(buffer,result[0]);
         return;
     }
     printf("\n");
+
+    int match_attempt=strlen(buffer); //does partial completion on buffer
+    int changed=0;
+    int match=1;
+    int j;
+    while (1){
+        for (j=1;j<size;j++){
+            if (result[j-1][match_attempt] != result[j][match_attempt]){
+                match=0;
+                break;
+            }
+        }
+        if (!match) break;
+        match_attempt++;
+    }
+    strncpy(buffer,result[0],match_attempt);
 
     for (j=0;j<size;j++){
         printf("%s  ",result[j]);

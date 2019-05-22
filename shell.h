@@ -78,6 +78,7 @@ int get_cursor_pos(int *cx, unsigned short *tx);
 int is_dir(char *buffer);
 void super_tab1(char *buffer);
 void super_tab2(char *buffer, char **dirs, int all);
+void print_completion(char **result,int size);
 void print_prompt();
 void clear_input_field();
 void delete_word(char *buffer);
