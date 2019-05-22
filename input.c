@@ -43,41 +43,60 @@ int in_array(char **buffer,char *string,int size){
     return 1;
 }
 
-//int get_cursor_pos(int *cx, unsigned short *tx) {
-//    char buf[30]={0};
-//    int ret, i, pow;
-//    char ch;
-//    *cx = 0;
-//    struct termios term, restore;
-//    tcgetattr(0, &term);
-//    tcgetattr(0, &restore);
-//    term.c_lflag &= ~(ICANON|ECHO);
-//    tcsetattr(0, TCSANOW, &term);
-//    write(1, "\033[6n", 4);
-//    for( i = 0, ch = 0; ch != 'R'; i++ )
-//    {
-//        ret = read(0, &ch, 1);
-//        if ( !ret ) {
-//            fprintf(stderr, "getpos: error reading response!\n");
-//            return 1;
-//        }
-//    buf[i] = ch;
-//    }
-//    for( i -= 2, pow = 1; buf[i] != ';'; i--, pow *= 10)
-//        *cx = *cx + ( buf[i] - '0' ) * pow;
-//    tcsetattr(0, TCSANOW, &restore);
-//
-//
-//    struct winsize w;
-//    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-//    *tx=w.ws_col;
-//    return 0;  // make sure your main returns int
-//}
+int get_cursor_pos(int *cx, unsigned short *tx) {
+    char buf[30]={0};
+    int ret, i, pow;
+    char ch;
+    *cx = 0;
+    struct termios term, restore;
+    tcgetattr(0, &term);
+    tcgetattr(0, &restore);
+    term.c_lflag &= ~(ICANON|ECHO);
+    tcsetattr(0, TCSANOW, &term);
+    write(1, "\033[6n", 4);
+    for( i = 0, ch = 0; ch != 'R'; i++ )
+    {
+        ret = read(0, &ch, 1);
+        if ( !ret ) {
+            fprintf(stderr, "getpos: error reading response!\n");
+            return 1;
+        }
+    buf[i] = ch;
+    }
+    for( i -= 2, pow = 1; buf[i] != ';'; i--, pow *= 10)
+        *cx = *cx + ( buf[i] - '0' ) * pow;
+    tcsetattr(0, TCSANOW, &restore);
+
+
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    *tx=w.ws_col;
+    return 0;  // make sure your main returns int
+}
+
+//allows completion when nested in directories
+int is_dir(char *buffer){
+    int len;
+    for (len=strlen(buffer)-1;len>=0;len--){
+        char c=buffer[len];
+        if (c=='/'){
+            char *sub_buffer=buffer+len+1;
+            char *dir=malloc(sizeof(char)*strlen(buffer)-len);
+            strncpy(dir,buffer,len+1);
+            dir[len+1]='\0';
+            char *dirs[]={dir,NULL};
+            super_tab2(sub_buffer,dirs,0);
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void super_tab1(char *buffer){
     int last_index=strlen(buffer)-1;
     int target=last_index;
     char c=buffer[target];
+    char **dirs;
     while (c!=' ' && target!=0){
         c=buffer[target--];
     }
@@ -85,7 +104,8 @@ void super_tab1(char *buffer){
         return;
     }
     if (target==0){ //is pressing tab on the first word in command
-        super_tab2(buffer,binaries,0);
+        if (is_dir(buffer)==0)
+            super_tab2(buffer,binaries,0);
         return;
     }
     else{ //is pressing tab on last word of multi word command
@@ -95,7 +115,8 @@ void super_tab1(char *buffer){
             return;
         }
         char *sub_buffer=buffer+target;
-        super_tab2(sub_buffer,current_dir,0);
+        if (is_dir(sub_buffer)==0)
+            super_tab2(sub_buffer,current_dir,0);
         return;
     }
 
@@ -114,6 +135,16 @@ void super_tab2(char *buffer, char **dirs, int all){
             while ((dir=readdir(d))!=NULL){ //while there is still items in directory to read
                 if ( in_array(result,dir->d_name,size)==0 ) continue;
                 result[size++]=strdup(dir->d_name);
+                if (dir->d_type==DT_DIR){
+                    int len=strlen(result[size-1]);
+                    char *new=malloc(sizeof(char)+len+2);
+                    strcpy(new,result[size-1]);
+                    new[len]='/';
+                    new[len+1]='\0';
+                    char *temp=result[size-1];
+                    result[size-1]=new;
+                    free(temp);
+                }
                 if (size%20==0){
                     if ( (result=realloc(result,sizeof(char*)*(size*2))) == NULL ){
                         fprintf(stderr,"\nerror on realloc\n");
@@ -128,6 +159,16 @@ void super_tab2(char *buffer, char **dirs, int all){
                 int match=strncmp(buffer,dir->d_name,strlen(buffer));
                 if (match==0){
                     result[size++]=strdup(dir->d_name);
+                    if (dir->d_type==DT_DIR){                    
+                        int len=strlen(result[size-1]);
+                        char *new=malloc(sizeof(char)+len+2);
+                        strcpy(new,result[size-1]);
+                        new[len]='/';
+                        new[len+1]='\0';
+                        char *temp=result[size-1];
+                        result[size-1]=new;
+                        free(temp);
+                    }
                     if (size%20==0){
                         if ( (result=realloc(result,sizeof(char*)*(size*2))) == NULL ){
                             fprintf(stderr,"\nerror on realloc\n");
@@ -147,6 +188,7 @@ void super_tab2(char *buffer, char **dirs, int all){
         return;
     }
     printf("\n");
+
     for (j=0;j<size;j++){
         printf("%s  ",result[j]);
         free(result[j]);
