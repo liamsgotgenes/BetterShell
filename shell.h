@@ -16,7 +16,8 @@
 /*
    main.c
 */
-#define MAX_LINE 80
+#define MAX_LINE 800
+#define MAX_HISTORY 50
 
 typedef struct process {
     struct process *next;
@@ -41,7 +42,8 @@ int shell_is_interactive;
 int shell_terminal;
 struct termios shell_tmodes, shell_tmodes_OLD;
 char last_dir[128];
-
+char **command_history;
+int history_size;
 
 //main functions
 job *copy_job(job *);

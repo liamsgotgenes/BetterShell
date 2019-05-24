@@ -56,6 +56,11 @@ void init_shell() {
         shell_tmodes.c_cc[VMIN]=1;
         tcsetattr(shell_terminal,TCSANOW,&shell_tmodes);
         atexit(exit_func); //calls exit_func on exit
+        if ((command_history=malloc(sizeof(char*) * MAX_HISTORY)) == NULL){
+            fprintf(stderr,"Internal error malloc; line ~60; Exiting;");
+            exit(-1);
+        }
+        history_size=0;
     }
 }
 
@@ -102,15 +107,25 @@ int is_alive(){
 
 /* Function to help copy process list for each job */
 void process_push(process **headp,char **argv,pid_t pid){
-    process *tmp=(process*)malloc(sizeof(process));
+    process *tmp;
+    if ((tmp=(process*)malloc(sizeof(process))) == NULL){
+        fprintf(stderr,"Internal error malloc; line ~112; Exiting;");
+        exit(-1);
+    }
     tmp->pid=pid;
-
     int i=0;
     while (argv[i]!=NULL)
         i++;
-    tmp->argv=malloc(sizeof(char*)*i);
+    if ((tmp->argv=malloc(sizeof(char*)*i))==NULL){
+        fprintf(stderr,"Internal error malloc; line ~120; Exiting;");
+        exit(-1);
+    }
     for (int j=0;j<i;j++){
-        tmp->argv[j]=malloc(sizeof(strlen(argv[j]))+1);
+        if ((tmp->argv[j]=malloc(sizeof(strlen(argv[j]))+1))==NULL){
+            fprintf(stderr,"Internal error malloc; line ~125; Exiting;");
+            exit(-1);
+        }
+        tmp->argv[j]=malloc(sizeof(char*)*strlen(argv[j])+1);
         strcpy(tmp->argv[j],argv[j]);
         tmp->argv[j][strlen(argv[j])]='\0';
     }
@@ -140,7 +155,11 @@ process *copy_process_list(process *p){
 
 /* Does a deep copy of the given job pointer */
 job *copy_job(job *j){
-    job *new=malloc(sizeof(job));
+    job *new;
+    if ((new=malloc(sizeof(job)))==NULL){
+        fprintf(stderr,"Internal error malloc; line ~159; Exiting;");
+        exit(-1);
+    }
     *(new)=*(j);
     new->command=strdup(j->command);
     new->first_process=copy_process_list(j->first_process);
@@ -211,7 +230,11 @@ int wait_for_job(job *j){
 
 //parses input and gets it ready to run as a command
 void parse_command(job *j, char *in,char **args){
-        process *p=malloc(sizeof(process));
+        process *p;
+        if ((p=malloc(sizeof(process)))==NULL){
+            fprintf(stderr,"Internal error malloc; line ~234; Exiting;");
+            exit(-1);
+        }
         p->next=NULL;
         p->argv=&args[0];
         j->first_process=p;
@@ -221,7 +244,10 @@ void parse_command(job *j, char *in,char **args){
             args[i++]=tok;
             if (!strcmp(tok,"|")){
                 args[i-1]=NULL;
-                p->next=malloc(sizeof(process));
+                if ((p->next=malloc(sizeof(process)))==NULL){
+                    fprintf(stderr,"Internal error malloc; line ~247; Exiting;");
+                    exit(-1);
+                }
                 p=p->next;
                 p->argv=&args[i];
                 p->next=NULL;
@@ -304,16 +330,23 @@ int main(){
     init_shell();
     char in[256];
 	while (1){
-        memset(in,0,sizeof(in));
+        memset(in,0,128);
         job j;
         j.bg=0;
         j.pgid=0;
         j.next=NULL;
         j.file=NULL;
         print_prompt();
-        input_buffer(in,256);
+        //printf("\ni am here\n");fflush(stdout);
+        input_buffer(in,128);
         if (strlen(in)==0) continue; //empty string
         j.command=in;
+        //adds to command history; if at max, moves memory down one
+        command_history[history_size]=strdup(in);
+        if (history_size==MAX_HISTORY){//out of bounds for array
+            memmove(&command_history[0],&command_history[1],sizeof(char*)*MAX_HISTORY-1);
+        }
+        else history_size++;
         parse_command(&j,in,args);
         if (!strcmp(args[0],"exit")){
             exit(0);
@@ -347,6 +380,13 @@ int main(){
         }
         if (!strcmp(args[0],"jobs")){
             print_all();
+            continue;
+        }
+        if (!strcmp(args[0],"history")){
+            int i;
+            for (i=0;i<history_size;i++){
+                printf("%d.\t%s\n",i,command_history[i]);
+            }
             continue;
         }
         run_job(&j);

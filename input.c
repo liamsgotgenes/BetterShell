@@ -3,6 +3,7 @@
 char *current_dir[]={ ".", NULL };
 char *binaries[]={ "/bin/", "/usr/bin/", "/usr/local/bin/", NULL };
 char *binaries_cwd[]={ "/bin/", "/usr/bin/", "/usr/local/bin/", ".", NULL };
+int history_index=0;
 
 /* Detects a key press from the keyboard
    without the need for enter to be pressed */
@@ -39,7 +40,11 @@ int is_dir(char *buffer){
         char c=buffer[len];
         if (c=='/'){
             char *sub_buffer=buffer+len+1;
-            char *dir=malloc(sizeof(char)*strlen(buffer)-len);
+            char *dir;
+            if ((dir=malloc(sizeof(char)*strlen(buffer)-len))==NULL){
+                fprintf(stderr,"Input Error; malloc; Line 46\n");
+                exit(-1);
+            }
             strncpy(dir,buffer,len+1);
             dir[len+1]='\0';
             char *dirs[]={dir,NULL};
@@ -179,15 +184,21 @@ void super_tab2(char *buffer, char **dirs, int all){
 
 /* Prints the shell prompt, including user and current directory */
 void print_prompt(){
-        pw=getpwuid(getuid());
+        uid_t uid=getuid();
+        pw=NULL;
+        pw=getpwuid(uid);
         char cwd[128];
         getcwd(cwd,128);
-        char *cmp=malloc(sizeof(char)*strlen(pw->pw_dir)+1);
+        char *cmp;
+        if ((cmp=malloc(sizeof(char)*strlen(pw->pw_dir)+1))==NULL){
+            fprintf(stderr,"Input Error; malloc; Line 193\n");
+            exit(-1);
+        }
         strncpy(cmp,cwd,strlen(pw->pw_dir));
         cmp[strlen(pw->pw_dir)]='\0';
         if ( !strcmp( pw->pw_dir,  cmp) ){
             cwd[0]='~';
-            strcpy(cwd+1,cwd+strlen(pw->pw_dir));
+            memmove(&cwd[1],&cwd[strlen(pw->pw_dir)],strlen(pw->pw_dir));
         }
 		printf("%s:%s> ",pw->pw_name,cwd);
         free(cmp);
@@ -224,10 +235,28 @@ void reposition_cursor(int i,int x){
     }
 }
 
+void swap_history(char *buffer,int flag){
+    if (flag){ //up
+        if (history_index>history_size)history_index=history_size;
+        if (history_index==0) return;
+        history_index--;
+        strcpy(buffer,command_history[history_index]);
+    }
+    else{ //down
+        history_index++;
+        if (history_index>=history_size){
+            memset(buffer,0,strlen(buffer));
+            return;
+        }
+        strcpy(buffer,command_history[history_index]);
+    }
+}
+
 /* Gets key presses from keyboard and stores them
    in a buffer. Returns on Enter */
 int input_buffer(char *buffer,size_t size){
     int i=0;
+    history_index=history_size;
     while (!key_press()){
         char c;
         c=getchar();
@@ -248,8 +277,8 @@ int input_buffer(char *buffer,size_t size){
             }
             clear_input_field();
             print_prompt();
-            printf("%s",buffer);
             i=strlen(buffer)-1;
+            printf("%s",buffer);
             reposition_cursor(i,strlen(buffer));
         }
         else{
@@ -299,9 +328,19 @@ int input_buffer(char *buffer,size_t size){
                 c=getchar();
                 switch (c){
                     case 'A': //up
+                        swap_history(buffer,1);
+                        i=strlen(buffer);
+                        clear_input_field();
+                        print_prompt();
+                        printf("%s",buffer);
                         i--;
                         break;
                     case 'B': //down
+                        swap_history(buffer,0);
+                        i=strlen(buffer);
+                        clear_input_field();
+                        print_prompt();
+                        printf("%s",buffer);
                         i--;
                         break;
                     case 'C': //right
