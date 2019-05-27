@@ -56,6 +56,7 @@ void init_shell() {
         shell_tmodes.c_cc[VMIN]=1;
         tcsetattr(shell_terminal,TCSANOW,&shell_tmodes);
         atexit(exit_func); //calls exit_func on exit
+
         if ((command_history=malloc(sizeof(char*) * MAX_HISTORY)) == NULL){
             fprintf(stderr,"Internal error malloc; line ~60; Exiting;");
             exit(-1);
@@ -67,8 +68,10 @@ void init_shell() {
 //prints all jobs in list
 void print_all(){
     job *tmp;
+    int i=0;
+    printf("%sIndex\tPGID\tCommand%s\n",_UNDERLINE_,_RESET_);
     for (tmp=head;tmp;tmp=tmp->next){
-        printf("%s::%d -> ",tmp->command,tmp->pgid);
+        printf("%d\t%d\t%s\n",i++,tmp->pgid,tmp->command);
     }
     printf("\n");
     free(tmp);
@@ -265,7 +268,8 @@ void parse_command(job *j, char *in,char **args){
             i--;
         }
         args[i]=NULL;
-
+        p=NULL;
+        free(p);
 }
 
 /* Runs a job */
@@ -326,7 +330,7 @@ void run_job(job *j){
 
 
 int main(){
-	char *args[MAX_LINE/2+1];
+	char *args[80];
     init_shell();
     char in[256];
 	while (1){
@@ -337,7 +341,6 @@ int main(){
         j.next=NULL;
         j.file=NULL;
         print_prompt();
-        //printf("\ni am here\n");fflush(stdout);
         input_buffer(in,128);
         if (strlen(in)==0) continue; //empty string
         j.command=in;

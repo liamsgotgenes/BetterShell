@@ -19,6 +19,8 @@ static int key_press(void){
 }
 
 int compare_stings(const void *a, const void *b){
+    const char *c=a;
+    const char *d=b;
     return strcmp( *(const char**)a, *(const char**)b );
 }
 
@@ -32,6 +34,35 @@ int in_array(char **buffer,char *string,int size){
     return 1;
 }
 
+/* prints out tab-completion in formatted columns */
+void print_result(char **result, const int size){
+    printf("\n");
+    struct winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+    int col=w.ws_col;
+    int loc=0;
+    int longest=0;
+    int i;
+    for (i=0;i<size;i++){
+        if (strlen(result[i])>longest){
+            longest=strlen(result[i]);
+        }
+    }
+    for (i=0;i<size;i++){
+        loc+=longest+1;
+        if (loc>=col-2){
+            printf("\n");
+            loc=0;
+            loc+=longest+1;
+        }
+        if (result[i][strlen(result[i])-1]=='/')
+            printf(_BLUE_"%-*s"_RESET_,longest+1,result[i]);
+        else
+            printf("%-*s",longest+1,result[i]);
+            
+    }
+    printf("\n");
+}
 
 //allows completion when nested in directories
 int is_dir(char *buffer){
@@ -144,6 +175,7 @@ void super_tab2(char *buffer, char **dirs, int all){
         }
         dir_count++;
     }
+    if (size==0) return;
 
     qsort( result, size, sizeof(char*), compare_stings); //sort array
 
@@ -171,13 +203,8 @@ void super_tab2(char *buffer, char **dirs, int all){
         strncpy(buffer,result[0],match_attempt);
         return;
     }
-
-    printf("\n");
-    for (j=0;j<size;j++){
-        printf("%s  ",result[j]);
-        free(result[j]);
-    }
-    printf("\n");
+    
+    print_result(result,size);
     free(result);
 
 }
@@ -269,10 +296,6 @@ int input_buffer(char *buffer,size_t size){
                 super_tab1(buffer);
             }
             else{
-                char *x[]={
-                    ".",
-                    NULL
-                };
                 super_tab1(buffer);
             }
             clear_input_field();

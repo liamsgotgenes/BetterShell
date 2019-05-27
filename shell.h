@@ -16,8 +16,18 @@
 /*
    main.c
 */
-#define MAX_LINE 800
 #define MAX_HISTORY 50
+
+//ANSI color codes for better output
+#define _RED_       "\x1b[31m"
+#define _GREEN_     "\x1b[32m"
+#define _YELLOW_    "\x1b[33m"
+#define _BLUE_      "\x1b[34m"
+#define _MAGENTA_   "\x1b[35m"
+#define _CYAN_      "\x1b[36m"
+#define _UNDERLINE_ "\x1b[4m"
+#define _RESET_     "\x1b[0m"
+
 
 typedef struct process {
     struct process *next;
