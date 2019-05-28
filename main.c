@@ -152,7 +152,7 @@ process *copy_process_list(process *p){
         }
         cur=cur->next;
     }
-    free(cur);
+    //free(cur);
     return new_process;
 }
 
@@ -246,6 +246,12 @@ void parse_command(job *j, char *in,char **args){
         char* tok=strtok(in," ");
         while (tok!=NULL){
             args[i++]=tok;
+            if (k!=0){
+                test[k]=' ';
+                k++;
+            }
+            strncpy(test+k,args[i-1],strlen(args[i-1]));
+            k+=strlen(args[i-1]);
             if (!strcmp(tok,"|")){
                 args[i-1]=NULL;
                 if ((p->next=malloc(sizeof(process)))==NULL){
@@ -260,6 +266,7 @@ void parse_command(job *j, char *in,char **args){
                 args[i--]=NULL;
                 tok=strtok(NULL," ");
                 j->file=tok;
+                j->file_mode=O_CREAT | O_WRONLY;
                 break;
             }
             if (!strcmp(tok,">>")){
@@ -273,12 +280,6 @@ void parse_command(job *j, char *in,char **args){
                 args[i-1]=NULL;
                 args[i-1]=strdup(command_history[history_size-1]);
             }
-            if (k!=0){
-                test[k]=' ';
-                k++;
-            }
-            strncpy(test+k,args[i-1],strlen(args[i-1]));
-            k+=strlen(args[i-1]);
             tok=strtok(NULL," ");
         }
         if (!strcmp(args[i-1],"&")){
@@ -372,9 +373,6 @@ int main(){
         input_buffer(in,128);
         if (strlen(in)==0) continue; //empty string
         j.command=in;
-        //adds to command history; if at max, moves memory down one
-        //command_history[history_size]=strdup(in);
-        //add_history(in);
         parse_command(&j,in,args);
         if (!strcmp(args[0],"exit")){
             exit(0);

@@ -72,7 +72,6 @@ void print_result(char **result, const int size){
             printf(_BLUE_"%-*s"_RESET_,longest+1,result[i]);
         else
             printf("%-*s",longest+1,result[i]);
-        free(result[i]);
     }
     printf("\n");
 }
@@ -130,11 +129,19 @@ void super_tab1(char *buffer){
     }
 }
 
+void free_result(char **result,int cap){
+    int i;
+    for (i=0;i<cap;i++){
+        free(result[i]);
+    }
+    free(result);
+}
 
 void super_tab2(char *buffer, char **dirs, int all){
-    char **result=malloc(sizeof(char*)*20);
     int size=0;
+    int cap=20;
     int dir_count=0;
+    char **result=malloc(sizeof(char*)*cap);
     while (dirs[dir_count]){ //while directory list is not NULL
         DIR *d;
         d=opendir(dirs[dir_count]);
@@ -156,8 +163,9 @@ void super_tab2(char *buffer, char **dirs, int all){
                     result[size-1]=new;
                     free(temp);
                 }
-                if (size%20==0){
-                    if ( (result=realloc(result,sizeof(char*)*(size*2))) == NULL ){
+                if (size==cap){
+                    cap*=2;
+                    if ( (result=realloc(result,sizeof(char*)*(cap))) == NULL ){
                         fprintf(stderr,"\nerror on realloc\n");
                         exit(-1);
                     }
@@ -180,8 +188,9 @@ void super_tab2(char *buffer, char **dirs, int all){
                         result[size-1]=new;
                         free(temp);
                     }
-                    if (size%20==0){
-                        if ( (result=realloc(result,sizeof(char*)*(size*2))) == NULL ){
+                    if (size==cap){
+                        cap*=2;
+                        if ( (result=realloc(result,sizeof(char*)*(cap))) == NULL ){
                             fprintf(stderr,"\nerror on realloc\n");
                             exit(-1);
                         }
@@ -190,13 +199,18 @@ void super_tab2(char *buffer, char **dirs, int all){
             }
         }
         dir_count++;
+        free(d);
     }
-    if (size==0) return;
+    if (size==0){
+        free_result(result,size);
+        return;
+    }
 
     qsort( result, size, sizeof(char*), compare_stings); //sort array
 
     if (size==1){ //autofills if only one match
         strcpy(buffer,result[0]);
+        free_result(result,size);
         return;
     }
 
@@ -217,11 +231,11 @@ void super_tab2(char *buffer, char **dirs, int all){
     }
     if (changed){ //avoids printing new lines and all options on a partial completion
         strncpy(buffer,result[0],match_attempt);
+        free_result(result,size);
         return;
     }
-    
     print_result(result,size);
-    free(result);
+    free_result(result,size);
 
 }
 
@@ -298,7 +312,7 @@ int input_buffer(char *buffer,size_t size){
         char c;
         c=getchar();
         if (c=='\n'){
-            buffer[i]='\0';
+            //buffer[i]='\0';
             printf("%c",c);
             return 0;
         }
