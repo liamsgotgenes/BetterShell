@@ -40,9 +40,11 @@ void print_result(char **result, const int size){
     struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     int col=w.ws_col;
+    int row=w.ws_row;
     int loc=0;
     int longest=0;
     int i;
+    int lines=0;
     for (i=0;i<size;i++){
         if (strlen(result[i])>longest){
             longest=strlen(result[i]);
@@ -52,6 +54,17 @@ void print_result(char **result, const int size){
         loc+=longest+1;
         if (loc>=col-2){
             printf("\n");
+            lines++;
+            if (lines>=row-2){
+                char c;
+                while (!key_press()){
+                    printf("--%d of %d--",i,size);
+                    c=getchar();
+                    clear_input_field();
+                    if (c=='\n') break;
+                    if (c=='\033' || c=='q') return; //esc
+                }
+            }
             loc=0;
             loc+=longest+1;
         }
@@ -59,7 +72,7 @@ void print_result(char **result, const int size){
             printf(_BLUE_"%-*s"_RESET_,longest+1,result[i]);
         else
             printf("%-*s",longest+1,result[i]);
-            
+        free(result[i]);
     }
     printf("\n");
 }
@@ -80,7 +93,7 @@ int is_dir(char *buffer){
             dir[len+1]='\0';
             char *dirs[]={dir,NULL};
             super_tab2(sub_buffer,dirs,0);
-            return 1;
+            return 1; //return 1 if is a dir. returns 0 if not
         }
     }
     return 0;
@@ -125,10 +138,13 @@ void super_tab2(char *buffer, char **dirs, int all){
     while (dirs[dir_count]){ //while directory list is not NULL
         DIR *d;
         d=opendir(dirs[dir_count]);
+        if (d==NULL) return; //is not a directory
         struct dirent *dir;
         if (all){ //print all items
             while ((dir=readdir(d))!=NULL){ //while there is still items in directory to read
                 if ( in_array(result,dir->d_name,size)==0 ) continue;
+                if (!strcmp(dir->d_name,"..")) continue;
+                if (!strcmp(dir->d_name,".")) continue;
                 result[size++]=strdup(dir->d_name);
                 if (dir->d_type==DT_DIR){
                     int len=strlen(result[size-1]);
@@ -216,19 +232,13 @@ void print_prompt(){
         pw=getpwuid(uid);
         char cwd[128];
         getcwd(cwd,128);
-        char *cmp;
-        if ((cmp=malloc(sizeof(char)*strlen(pw->pw_dir)+1))==NULL){
-            fprintf(stderr,"Input Error; malloc; Line 193\n");
-            exit(-1);
-        }
-        strncpy(cmp,cwd,strlen(pw->pw_dir));
-        cmp[strlen(pw->pw_dir)]='\0';
-        if ( !strcmp( pw->pw_dir,  cmp) ){
+        if (!strncmp(cwd,pw->pw_dir,strlen(pw->pw_dir))){
+            int len=strlen(cwd)-strlen(pw->pw_dir);
             cwd[0]='~';
-            memmove(&cwd[1],&cwd[strlen(pw->pw_dir)],strlen(pw->pw_dir));
+            memmove(&cwd[1],&cwd[strlen(pw->pw_dir)],len+1);
+            cwd[len+2]='\0';
         }
 		printf("%s:%s> ",pw->pw_name,cwd);
-        free(cmp);
 }
 
 /* Clear all input visually on terminal */
@@ -357,7 +367,7 @@ int input_buffer(char *buffer,size_t size){
                         print_prompt();
                         printf("%s",buffer);
                         i--;
-                        break;
+                    break;
                     case 'B': //down
                         swap_history(buffer,0);
                         i=strlen(buffer);
@@ -365,7 +375,7 @@ int input_buffer(char *buffer,size_t size){
                         print_prompt();
                         printf("%s",buffer);
                         i--;
-                        break;
+                    break;
                     case 'C': //right
                         if (i==strlen(buffer)){
                             i--;
@@ -377,16 +387,17 @@ int input_buffer(char *buffer,size_t size){
                             printf("%s",buffer);
                             reposition_cursor(i,strlen(buffer));
                         }
-                        break;
+                    break;
                     case 'D': //left
                         if (i>0){
                             printf("\b");
                             i--;
                         }
                         i--;
-                        break;
+                    break;
                     default: //escape
                         i--;
+                    break;
                 }
             }
             else{

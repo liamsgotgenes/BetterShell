@@ -30,7 +30,6 @@ void sig_handler(int sig){
     }
 }
 
-
 void init_shell() {
     shell_terminal = STDIN_FILENO;
     shell_is_interactive = isatty(shell_terminal); //checks if terminal is running interactively
@@ -153,6 +152,7 @@ process *copy_process_list(process *p){
         }
         cur=cur->next;
     }
+    free(cur);
     return new_process;
 }
 
@@ -356,14 +356,15 @@ int main(){
         }
         if (!strcmp("cd",args[0])){
             char tmp[128];
+            getcwd(tmp,sizeof(tmp));
             if (args[1]==NULL) args[1]=pw->pw_dir;
             else if (!strcmp(args[1],"~")) args[1]=pw->pw_dir;
-            else if (!strcmp(args[1],"-")){
-                printf("Feature coming soon, please wait.\n");
-                continue;
-            }
+            else if (!strcmp(args[1],"-")) args[1]=last_dir;
             if (chdir(args[1])==-1){
                 printf("%s\n",strerror(errno));
+            }
+            else{
+                strcpy(last_dir,tmp);
             }
             continue;
         }

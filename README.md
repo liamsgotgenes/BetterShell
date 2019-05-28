@@ -4,8 +4,8 @@ A light-weight shell written in C. I made this to drastically improve upon the [
 I plan to continue develop this and add more features when I find the time.
 
 ## Future Features/Improvements
-- ~~Improve tab completion~~ (Just need to fix print format)
+- ~~Improve tab completion~~
 - Improve foreground/background process to allow moving any background process to the foreground, not just the most recent one
-- Add command history
+- ~~Add command history~~
 - Session variables
 - Alias declarations
