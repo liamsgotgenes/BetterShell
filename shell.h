@@ -45,6 +45,7 @@ typedef struct job {
     int bg;
     char *file;
     int file_fd;
+    int file_mode;
 } job;
 
 pid_t shell_pgid;
@@ -56,6 +57,7 @@ char **command_history;
 int history_size;
 
 //main functions
+void add_history(char *in);
 job *copy_job(job *);
 process *copy_process_list(process *p);
 void init_shell();

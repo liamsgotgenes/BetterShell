@@ -230,9 +230,10 @@ int wait_for_job(job *j){
     }
     return status;
 }
-
 //parses input and gets it ready to run as a command
 void parse_command(job *j, char *in,char **args){
+        char test[strlen(in)]; //for replacing the '!!' with prev command in history
+        int k=0; //for replacing the '!!' with prev command in history
         process *p;
         if ((p=malloc(sizeof(process)))==NULL){
             fprintf(stderr,"Internal error malloc; line ~234; Exiting;");
@@ -261,15 +262,34 @@ void parse_command(job *j, char *in,char **args){
                 j->file=tok;
                 break;
             }
+            if (!strcmp(tok,">>")){
+                args[i--]=NULL;
+                tok=strtok(NULL," ");
+                j->file=tok;
+                j->file_mode=O_CREAT | O_WRONLY | O_APPEND;
+                break;
+            }
+            if (!strcmp(tok,"!!")){
+                args[i-1]=NULL;
+                args[i-1]=strdup(command_history[history_size-1]);
+            }
+            if (k!=0){
+                test[k]=' ';
+                k++;
+            }
+            strncpy(test+k,args[i-1],strlen(args[i-1]));
+            k+=strlen(args[i-1]);
             tok=strtok(NULL," ");
         }
         if (!strcmp(args[i-1],"&")){
             j->bg=1;
             i--;
         }
+        test[k]='\0';
         args[i]=NULL;
         p=NULL;
         free(p);
+        add_history(test);
 }
 
 /* Runs a job */
@@ -293,7 +313,7 @@ void run_job(job *j){
                 if (in!=0)
                     dup2(in,0);
                 if (j->file!=NULL){
-                    j->file_fd=open(j->file, O_CREAT | O_WRONLY, 0644);
+                    j->file_fd=open(j->file, j->file_mode, 0644);
                     if (j->file_fd<0){
                         fprintf(stderr,"Could not open/create file %s\n",j->file);
                         exit(-1);
@@ -328,6 +348,14 @@ void run_job(job *j){
     }
 }
 
+void add_history(char *cmd){
+    command_history[history_size]=strdup(cmd);
+    if (history_size==MAX_HISTORY){
+        memmove(&command_history[0],&command_history[1],sizeof(char*)*MAX_HISTORY-1);
+    }
+    else history_size++;
+}
+
 
 int main(){
 	char *args[80];
@@ -345,11 +373,8 @@ int main(){
         if (strlen(in)==0) continue; //empty string
         j.command=in;
         //adds to command history; if at max, moves memory down one
-        command_history[history_size]=strdup(in);
-        if (history_size==MAX_HISTORY){//out of bounds for array
-            memmove(&command_history[0],&command_history[1],sizeof(char*)*MAX_HISTORY-1);
-        }
-        else history_size++;
+        //command_history[history_size]=strdup(in);
+        //add_history(in);
         parse_command(&j,in,args);
         if (!strcmp(args[0],"exit")){
             exit(0);

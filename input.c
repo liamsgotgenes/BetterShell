@@ -298,6 +298,7 @@ int input_buffer(char *buffer,size_t size){
         char c;
         c=getchar();
         if (c=='\n'){
+            buffer[i]='\0';
             printf("%c",c);
             return 0;
         }
